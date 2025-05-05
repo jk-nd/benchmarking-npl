@@ -1,0 +1,8 @@
+schemaVersion: v1
+targets:
+  local:
+    type: engine
+    engineManagementUrl: http://localhost:12400
+    authUrl: http://localhost:11000
+    username: alice
+    password: password123
