@@ -1,8 +1,6 @@
 {
   "name": "NPL Development Environment",
-  "build": {
-    "dockerfile": "Dockerfile"
-  },
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
   "customizations": {
     "vscode": {
       "extensions": [
@@ -11,24 +9,9 @@
     }
   },
   "features": {
-    "ghcr.io/devcontainers/features/java:1": {
-      "version": "21",
-      "additionalVersions": "17",
-      "installGradle": "true",
-      "installMaven": "true"
-    },
-    "ghcr.io/devcontainers/features/node:1": "none",
-    "ghcr.io/devcontainers/features/git:1": {
-      "version": "latest",
-      "ppa": "false"
-    },
     "ghcr.io/devcontainers/features/docker-in-docker:2": {
       "version": "latest"
-    }
-  },
-  "containerEnv": {
-    "JAVA_HOME": "/usr/lib/jvm/msopenjdk-current"
-  },
-  "remoteUser": "codespace",
-  "containerUser": "codespace"
+    },
+    "ghcr.io/noumenadigital/devcontainers/npl-cli:1": {}
+  }
 }
