@@ -1,0 +1,422 @@
+package expense;
+
+/**
+ * Enum for expense categories
+ */
+enum ExpenseCategory {
+    MEALS,
+    TRAVEL,
+    ACCOMMODATION,
+    ENTERTAINMENT,
+    SUPPLIES,
+    CAPITAL,
+    OTHER
+}
+
+/**
+ * Enum for currencies
+ */
+enum Currency {
+    USD,
+    EUR,
+    GBP,
+    JPY
+}
+
+/**
+ * Struct for receipt information
+ */
+struct Receipt {
+    fileName: Text,
+    uploadDate: DateTime,
+    fileSize: Number
+}
+
+/**
+ * Struct for timestamped payment amounts
+ */
+struct TimestampedAmount {
+    amount: Number,
+    currency: Currency,
+    timestamp: DateTime
+}
+
+/**
+ * Function to get monthly submission limit for employee
+ * @param employeeId The employee ID
+ * @return The monthly submission limit
+ */
+function getMonthlySubmissionLimit(employeeId: Text) returns Number -> 2000.0;
+
+/**
+ * Function to get month-to-date submitted amount
+ * @param employeeId The employee ID
+ * @return The amount already submitted this month
+ */
+function getMonthToDateSubmitted(employeeId: Text) returns Number -> 500.0;
+
+/**
+ * Function to check for duplicate expenses
+ * @param vendorId The vendor ID
+ * @param amount The expense amount
+ * @param expenseDate The expense date
+ * @return True if duplicate found
+ */
+function isDuplicateExpense(vendorId: Text, amount: Number, expenseDate: DateTime) returns Boolean -> false;
+
+/**
+ * Function to get remaining budget for department
+ * @param department The department name
+ * @param quarter The quarter string
+ * @return The remaining budget amount
+ */
+function getRemainingBudget(department: Text, quarter: Text) returns Number -> 50000.0;
+
+/**
+ * Function to check if vendor is blacklisted
+ * @param vendorId The vendor ID
+ * @return True if vendor is blacklisted
+ */
+function isVendorBlacklisted(vendorId: Text) returns Boolean -> false;
+
+/**
+ * Function to check if date is a working day
+ * @param date The date to check
+ * @return True if it's a working day
+ */
+function isWorkingDay(date: DateTime) returns Boolean -> true;
+
+/**
+ * Function to get direct manager ID
+ * @param employeeId The employee ID
+ * @return The manager ID
+ */
+function getDirectManager(employeeId: Text) returns Text -> "manager_" + employeeId;
+
+/**
+ * Function to get manager approval limit
+ * @param managerId The manager ID
+ * @param seniorityLevel The seniority level
+ * @return The approval limit
+ */
+function getManagerApprovalLimit(managerId: Text, seniorityLevel: Number) returns Number -> seniorityLevel * 5000.0;
+
+/**
+ * Function to get vendor tax status
+ * @param vendorId The vendor ID
+ * @return The tax status
+ */
+function getVendorTaxStatus(vendorId: Text) returns Text -> "VALID";
+
+/**
+ * Function to check compliance approval
+ * @param expenseId The expense ID
+ * @return True if compliance approved
+ */
+function hasComplianceApproval(expenseId: Text) returns Boolean -> true;
+
+/**
+ * Function to check bank holiday status
+ * @param country The country code
+ * @param date The date to check
+ * @return True if it's a bank holiday
+ */
+function getBankHolidayStatus(country: Text, date: DateTime) returns Boolean -> false;
+
+/**
+ * Function to check audit certification validity
+ * @param complianceOfficerId The compliance officer ID
+ * @return True if certification is valid
+ */
+function hasValidAuditCertification(complianceOfficerId: Text) returns Boolean -> true;
+
+/**
+ * Function to generate compliance report
+ * @param expenseId The expense ID
+ * @return The compliance report
+ */
+function generateComplianceReport(expenseId: Text) returns Text -> "Compliance Report for Expense: " + expenseId + " - Generated at " + now().toText();
+
+/**
+ * Function to get suspicious activity score
+ * @param expenseId The expense ID
+ * @return The suspicious activity score
+ */
+function getSuspiciousActivityScore(expenseId: Text) returns Number -> 2.5;
+
+/**
+ * Function to get executive approval quota
+ * @param executiveId The executive ID
+ * @param quarter The quarter string
+ * @return The remaining approval quota
+ */
+function getExecutiveApprovalQuota(executiveId: Text, quarter: Text) returns Number -> 5.0;
+
+/**
+ * Function to check conflict of interest clearance
+ * @param executiveId The executive ID
+ * @param vendorId The vendor ID
+ * @return True if clearance exists
+ */
+function hasConflictOfInterestClearance(executiveId: Text, vendorId: Text) returns Boolean -> true;
+
+/**
+ * Function to get board approval status
+ * @param amount The expense amount
+ * @return True if board approval exists
+ */
+function getBoardApprovalStatus(amount: Number) returns Boolean -> amount < 50000.0;
+
+/**
+ * Function to get username from party
+ * @param party The party
+ * @return The username
+ */
+function getUsername(party: Party) returns Text -> 
+    party.entity()
+    .getOrNone("preferred_username")
+    .getOrElse(setOf("unknown"))
+    .asList()
+    .get(0);
+
+/**
+ * Expense Approval Protocol
+ * Manages the complete expense approval workflow from submission to payment
+ * @param employeeId The employee submitting the expense
+ * @param managerId The manager who can approve
+ * @param financeId The finance person who processes payment
+ * @param complianceId The compliance officer
+ * @param amount The expense amount
+ * @param expenseCategory The category of expense
+ * @param currency The currency
+ * @param expenseDate The date of the expense
+ * @param vendorId The vendor identifier
+ * @param department The department
+ * @param description Brief description of expense
+ * @param receipts List of receipt files
+ */
+@api
+protocol[employee, manager, finance, compliance, vp, cfo] ExpenseApproval(
+    var employeeId: Text,
+    var managerId: Text,
+    var financeId: Text,
+    var complianceId: Text,
+    var amount: Number,
+    var expenseCategory: ExpenseCategory,
+    var currency: Currency,
+    var expenseDate: DateTime,
+    var vendorId: Text,
+    var department: Text,
+    var description: Text,
+    var receipts: List<Receipt>
+) {
+    require(amount > 0, "Amount must be positive");
+    require(expenseDate.isBefore(now(), false) || expenseDate == now(), "Expense date cannot be in the future");
+    require(expenseDate.isAfter(now().minus(days(90)), false), "Expenses must be within 90 days");
+
+    initial state draft;
+    state submitted;
+    state approved;
+    state compliance_hold;
+    state rejected;
+    final state paid;
+    
+    private var approvalHistory: List<Text> = listOf<Text>();
+    private var complianceNotes: List<Text> = listOf<Text>();
+    private var paymentDetails: Optional<TimestampedAmount> = optionalOf<TimestampedAmount>();
+
+    /**
+     * Employee submits expense for approval
+     * @return Success message
+     */
+    @api
+    permission[employee] submit() returns Text | draft {
+        require(amount > 0, "Amount must be positive");
+        require(amount <= (getMonthlySubmissionLimit(employeeId) - getMonthToDateSubmitted(employeeId)), 
+                "Monthly submission limit exceeded");
+        require(receipts.size() > 0 || amount < 25.0,
+                "Receipts required for amounts over $25");
+        require(!isDuplicateExpense(vendorId, amount, expenseDate),
+                "Potential duplicate expense detected");
+        
+        approvalHistory = approvalHistory.with("Submitted by " + getUsername(employee) + " at " + now().toText());
+        become submitted;
+        return "Expense submitted successfully";
+    };
+
+    /**
+     * Employee withdraws expense before approval
+     * @return Success message
+     */
+    @api
+    permission[employee] withdraw() returns Text | draft {
+        approvalHistory = approvalHistory.with("Withdrawn by " + getUsername(employee) + " at " + now().toText());
+        become rejected;
+        return "Expense withdrawn by employee";
+    };
+
+    /**
+     * Manager approves expense
+     * @return Success message
+     */
+    @api
+    permission[manager] approve() returns Text | submitted {
+        require(managerId == getDirectManager(employeeId), "Manager can only approve direct reports");
+        require(amount <= getManagerApprovalLimit(managerId, 3), "Amount exceeds manager approval limit");
+        require(amount <= getRemainingBudget(department, "Q3-2025"),
+                "Insufficient departmental budget remaining");
+        require(!isVendorBlacklisted(vendorId),
+                "Vendor is currently under investigation");
+        require(expenseCategory != ExpenseCategory.ENTERTAINMENT || amount <= 200,
+                "Entertainment expenses over $200 require VP approval");
+        require(isWorkingDay(now()),
+                "Approvals can only be processed on business days");
+        
+        approvalHistory = approvalHistory.with("Approved by manager " + getUsername(manager) + " at " + now().toText());
+        become approved;
+        return "Expense approved by manager";
+    };
+
+    /**
+     * Manager rejects expense
+     * @return Success message
+     */
+    @api
+    permission[manager] reject() returns Text | submitted {
+        approvalHistory = approvalHistory.with("Rejected by manager " + getUsername(manager) + " at " + now().toText());
+        become rejected;
+        return "Expense rejected by manager";
+    };
+
+    /**
+     * Finance processes payment
+     * @return Success message
+     */
+    @api
+    permission[finance] processPayment() returns Text | approved {
+        require(getVendorTaxStatus(vendorId) == "VALID",
+                "Vendor tax documentation expired or invalid");
+        require(amount < 10000 || hasComplianceApproval(description),
+                "Compliance approval required for payments over $10,000");
+        require(!getBankHolidayStatus("US", now()),
+                "Cannot process payments on bank holidays");
+        
+        paymentDetails = optionalOf(TimestampedAmount(
+            amount = amount,
+            currency = currency,
+            timestamp = now()
+        ));
+        approvalHistory = approvalHistory.with("Payment processed by " + getUsername(finance) + " at " + now().toText());
+        become paid;
+        return "Payment processed successfully";
+    };
+
+    /**
+     * Compliance reviews expense and generates audit report
+     * @return Compliance report
+     */
+    @api
+    permission[compliance] auditReview() returns Text {
+        require(hasValidAuditCertification(complianceId),
+                "Auditor certification expired");
+        return generateComplianceReport(description);
+    };
+
+    /**
+     * Compliance flags expense as suspicious
+     * @param reason The reason for flagging
+     * @return Success message
+     */
+    @api
+    permission[compliance] flagSuspicious(reason: Text) returns Text {
+        require(getSuspiciousActivityScore(description) > 5.0 || reason.length() > 0,
+                "Insufficient basis for suspicious activity flag");
+        
+        complianceNotes = complianceNotes.with("Flagged as suspicious: " + reason + " by " + getUsername(compliance) + " at " + now().toText());
+        approvalHistory = approvalHistory.with("Flagged for compliance review at " + now().toText());
+        become compliance_hold;
+        return "Expense flagged for compliance review";
+    };
+
+    /**
+     * Compliance clears expense from hold
+     * @return Success message
+     */
+    @api
+    permission[compliance] clearCompliance() returns Text | compliance_hold {
+        complianceNotes = complianceNotes.with("Cleared by compliance " + getUsername(compliance) + " at " + now().toText());
+        approvalHistory = approvalHistory.with("Compliance cleared at " + now().toText());
+        become submitted;
+        return "Expense cleared by compliance";
+    };
+
+    /**
+     * Executive approves high-value expense
+     * @return Success message
+     */
+    @api
+    permission[vp | cfo] highValueApproval() returns Text | submitted {
+        require(amount > 10000 || expenseCategory == ExpenseCategory.CAPITAL,
+                "High-value approval only for amounts > $10,000 or capital expenses");
+        require(getExecutiveApprovalQuota(getUsername(vp), "Q3-2025") > 0,
+                "Executive has exceeded quarterly approval quota");
+        require(hasConflictOfInterestClearance(getUsername(vp), vendorId),
+                "Conflict of interest screening required");
+        require(getBoardApprovalStatus(amount) || amount < 50000,
+                "Board approval required for expenditures over $50,000");
+        
+        approvalHistory = approvalHistory.with("High-value approval by executive " + getUsername(vp) + " at " + now().toText());
+        become approved;
+        return "High-value expense approved by executive";
+    };
+
+    /**
+     * Executive override for special cases
+     * @param reason The reason for override
+     * @return Success message
+     */
+    @api
+    permission[vp | cfo] executiveOverride(reason: Text) returns Text {
+        require(reason.length() > 10, "Executive override requires detailed reason");
+        
+        approvalHistory = approvalHistory.with("Executive override: " + reason + " by " + getUsername(vp) + " at " + now().toText());
+        become approved;
+        return "Expense approved via executive override";
+    };
+
+    /**
+     * Get approval history for audit purposes
+     * @return List of approval history entries
+     */
+    @api
+    permission[employee | manager | finance | compliance | vp | cfo] getApprovalHistory() returns List<Text> {
+        return approvalHistory;
+    };
+
+    /**
+     * Get current status of expense
+     * @return Status description
+     */
+    @api  
+    permission[employee | manager | finance | compliance | vp | cfo] getStatus() returns Text {
+        return "Expense " + description + " is in state: " + activeState().getOrFail().toText();
+    };
+
+    /**
+     * Get compliance notes (restricted access)
+     * @return List of compliance notes
+     */
+    @api
+    permission[compliance | vp | cfo] getComplianceNotes() returns List<Text> {
+        return complianceNotes;
+    };
+
+    /**
+     * Get payment details (restricted access)
+     * @return Payment details if available
+     */
+    @api
+    permission[finance | vp | cfo] getPaymentDetails() returns Optional<TimestampedAmount> {
+        return paymentDetails;
+    };
+};

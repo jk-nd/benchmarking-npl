@@ -1,0 +1,28 @@
+services:
+  postgres:
+    image: postgres:14.13-alpine
+    ports:
+      - "15432:5432"
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: npl_expense
+
+  engine:
+    image: ghcr.io/noumenadigital/images/engine:latest
+    ports:
+      - "21000:11000"
+      - "22000:12000" 
+      - "22400:12400"
+      - "22700:12700"
+    environment:
+      ENGINE_DB_PASSWORD: postgres
+      ENGINE_DB_HOST: postgres
+      ENGINE_DB_NAME: npl_expense
+      ENGINE_DEV_MODE: true
+    depends_on:
+      - postgres
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

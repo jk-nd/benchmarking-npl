@@ -1,0 +1,25 @@
+expense.ExpenseApproval:
+  employee:
+    extract:
+      entity:
+        - preferred_username
+  manager:
+    extract:
+      entity:
+        - preferred_username
+  finance:
+    extract:
+      entity:
+        - preferred_username
+  compliance:
+    extract:
+      entity:
+        - preferred_username
+  vp:
+    extract:
+      entity:
+        - preferred_username
+  cfo:
+    extract:
+      entity:
+        - preferred_username

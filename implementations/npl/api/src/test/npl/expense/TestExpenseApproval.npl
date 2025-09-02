@@ -1,0 +1,258 @@
+package expense;
+
+/**
+ * Helper function to create test employee party
+ * @return Test employee party
+ */
+function getEmployee() returns Party ->
+    partyOf(
+        mapOf(
+            Pair("employee_id", setOf("emp_123")),
+            Pair("department", setOf("Engineering")),
+            Pair("monthly_limit", setOf("2000")),
+            Pair("preferred_username", setOf("alice"))
+        ),
+        mapOf<Text, Set<Text>>()
+    );
+
+/**
+ * Helper function to create test manager party
+ * @return Test manager party
+ */
+function getManager() returns Party ->
+    partyOf(
+        mapOf(
+            Pair("manager_id", setOf("mgr_456")),
+            Pair("department", setOf("Engineering")),
+            Pair("approval_limit", setOf("15000")),
+            Pair("seniority_level", setOf("3")),
+            Pair("preferred_username", setOf("bob"))
+        ),
+        mapOf<Text, Set<Text>>()
+    );
+
+/**
+ * Helper function to create test finance party
+ * @return Test finance party
+ */
+function getFinance() returns Party ->
+    partyOf(
+        mapOf(
+            Pair("finance_id", setOf("fin_789")),
+            Pair("department", setOf("Finance")),
+            Pair("preferred_username", setOf("carol"))
+        ),
+        mapOf<Text, Set<Text>>()
+    );
+
+/**
+ * Helper function to create test compliance party
+ * @return Test compliance party
+ */
+function getCompliance() returns Party ->
+    partyOf(
+        mapOf(
+            Pair("compliance_id", setOf("comp_101")),
+            Pair("certification_valid_until", setOf("2025-12-31")),
+            Pair("preferred_username", setOf("david"))
+        ),
+        mapOf<Text, Set<Text>>()
+    );
+
+/**
+ * Helper function to create test VP party
+ * @return Test VP party
+ */
+function getVP() returns Party ->
+    partyOf(
+        mapOf(
+            Pair("executive_id", setOf("vp_202")),
+            Pair("quarterly_approval_quota", setOf("10")),
+            Pair("preferred_username", setOf("eve"))
+        ),
+        mapOf<Text, Set<Text>>()
+    );
+
+/**
+ * Helper function to create test CFO party
+ * @return Test CFO party
+ */
+function getCFO() returns Party ->
+    partyOf(
+        mapOf(
+            Pair("executive_id", setOf("cfo_303")),
+            Pair("quarterly_approval_quota", setOf("20")),
+            Pair("preferred_username", setOf("frank"))
+        ),
+        mapOf<Text, Set<Text>>()
+    );
+
+/**
+ * Helper function to create test receipts
+ * @return Test receipts list
+ */
+function createTestReceipts() returns List<Receipt> ->
+    listOf(Receipt(
+        fileName = "receipt_001.pdf",
+        uploadDate = now(),
+        fileSize = 1024
+    ));
+
+/**
+ * Test basic expense submission workflow
+ * @param test Test framework instance
+ */
+@test
+function testBasicExpenseSubmission(test: Test) -> {
+    var employee = getEmployee();
+    var manager = getManager();
+    var finance = getFinance();
+    var compliance = getCompliance();
+    var vp = getVP();
+    var cfo = getCFO();
+    
+    var expense = ExpenseApproval[employee, manager, finance, compliance, vp, cfo](
+        employeeId = "emp_123",
+        managerId = "mgr_456", 
+        financeId = "fin_789",
+        complianceId = "comp_101",
+        amount = 100.0,
+        expenseCategory = ExpenseCategory.MEALS,
+        currency = Currency.USD,
+        expenseDate = now().minus(days(1)),
+        vendorId = "vendor_001",
+        department = "Engineering",
+        description = "Team lunch",
+        receipts = createTestReceipts()
+    );
+    
+    test.assertEquals(ExpenseApproval.States.draft, expense.activeState().getOrFail());
+    
+    var submitResult = expense.submit[employee]();
+    test.assertEquals("Expense submitted successfully", submitResult);
+    test.assertEquals(ExpenseApproval.States.submitted, expense.activeState().getOrFail());
+};
+
+/**
+ * Test manager approval workflow
+ * @param test Test framework instance
+ */
+@test
+function testManagerApproval(test: Test) -> {
+    var employee = getEmployee();
+    var manager = getManager();
+    var finance = getFinance();
+    var compliance = getCompliance();
+    var vp = getVP();
+    var cfo = getCFO();
+    
+    var expense = ExpenseApproval[employee, manager, finance, compliance, vp, cfo](
+        employeeId = "emp_123",
+        managerId = "manager_emp_123",  // Must match getDirectManager logic
+        financeId = "fin_789",
+        complianceId = "comp_101",
+        amount = 500.0,
+        expenseCategory = ExpenseCategory.TRAVEL,
+        currency = Currency.USD,
+        expenseDate = now().minus(days(2)),
+        vendorId = "vendor_002",
+        department = "Engineering",
+        description = "Business travel",
+        receipts = createTestReceipts()
+    );
+    
+    // Submit expense first
+    expense.submit[employee]();
+    test.assertEquals(ExpenseApproval.States.submitted, expense.activeState().getOrFail());
+    
+    // Manager approves
+    var approveResult = expense.approve[manager]();
+    test.assertEquals("Expense approved by manager", approveResult);
+    test.assertEquals(ExpenseApproval.States.approved, expense.activeState().getOrFail());
+};
+
+/**
+ * Test complete workflow from submission to payment
+ * @param test Test framework instance
+ */
+@test
+function testCompleteWorkflow(test: Test) -> {
+    var employee = getEmployee();
+    var manager = getManager();
+    var finance = getFinance();
+    var compliance = getCompliance();
+    var vp = getVP();
+    var cfo = getCFO();
+    
+    var expense = ExpenseApproval[employee, manager, finance, compliance, vp, cfo](
+        employeeId = "emp_123",
+        managerId = "manager_emp_123",
+        financeId = "fin_789", 
+        complianceId = "comp_101",
+        amount = 1000.0,
+        expenseCategory = ExpenseCategory.SUPPLIES,
+        currency = Currency.USD,
+        expenseDate = now().minus(days(3)),
+        vendorId = "vendor_003",
+        department = "Engineering",
+        description = "Office supplies",
+        receipts = createTestReceipts()
+    );
+    
+    // Complete workflow: Submit -> Approve -> Pay
+    expense.submit[employee]();
+    test.assertEquals(ExpenseApproval.States.submitted, expense.activeState().getOrFail());
+    
+    expense.approve[manager]();
+    test.assertEquals(ExpenseApproval.States.approved, expense.activeState().getOrFail());
+    
+    var payResult = expense.processPayment[finance]();
+    test.assertEquals("Payment processed successfully", payResult);
+    test.assertEquals(ExpenseApproval.States.paid, expense.activeState().getOrFail());
+    
+    // Check payment details were recorded
+    var paymentDetails = expense.getPaymentDetails[finance]();
+    test.assertEquals(true, paymentDetails.isPresent());
+};
+
+/**
+ * Test audit trail generation
+ * @param test Test framework instance
+ */
+@test
+function testAuditTrailGeneration(test: Test) -> {
+    var employee = getEmployee();
+    var manager = getManager(); 
+    var finance = getFinance();
+    var compliance = getCompliance();
+    var vp = getVP();
+    var cfo = getCFO();
+    
+    var expense = ExpenseApproval[employee, manager, finance, compliance, vp, cfo](
+        employeeId = "emp_123",
+        managerId = "manager_emp_123",
+        financeId = "fin_789",
+        complianceId = "comp_101",
+        amount = 150.0,
+        expenseCategory = ExpenseCategory.MEALS,
+        currency = Currency.USD,
+        expenseDate = now().minus(days(5)),
+        vendorId = "vendor_010",
+        department = "Engineering",
+        description = "Working lunch",
+        receipts = createTestReceipts()
+    );
+    
+    // Perform workflow steps
+    expense.submit[employee]();
+    expense.approve[manager]();
+    expense.processPayment[finance]();
+    
+    // Check audit trail was created
+    var history = expense.getApprovalHistory[manager]();
+    test.assertEquals(3, history.size()); // Should have 3 entries: submit, approve, payment
+    
+    // Compliance can generate audit report
+    var auditReport = expense.auditReview[compliance]();
+    test.assertEquals(true, auditReport.length() > 0);
+};
