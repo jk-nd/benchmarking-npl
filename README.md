@@ -41,7 +41,7 @@ This repository contains **4 complete implementations** of the identical system:
 | Framework | Core LOC* | Auth LOC | Files | Dependencies | Security Issues | **Status** |
 |-----------|----------|----------|-------|--------------|-----------------|------------|
 | **NPL** | 423 | ~50 | 1 | 0 | **0** | ✅ **Working** |
-| **Ruby on Rails** | 1,401 | ~400 | 20 | 12+ | 5 | ⚠️ Code Complete |
+| **Ruby on Rails** | 1,514 | ~400 | 20 | 12+ | 5 | ⚠️ Code Complete |
 | **Node.js + Express** | 3,239 | ~800 | 21 | 20+ | 8 | ✅ **Working** |
 | **Django + DRF** | 2,242 | ~330 | 17 | 15+ | 8 | ✅ **Working** |
 
@@ -59,7 +59,7 @@ All implementations have been **validated as working systems**:
 ## Key Findings
 
 **NPL's Revolutionary Advantages:**
-- **3.3-7.7x code reduction** compared to traditional frameworks (423 vs 1,401-3,239 LOC)
+- **3.6-7.7x code reduction** compared to traditional frameworks (423 vs 1,514-3,239 LOC)
 - **Zero authorization vulnerabilities** vs 5-8 in traditional implementations
 - **Compile-time security guarantees** eliminate entire vulnerability categories
 - **Unified business logic** - authorization and business rules in single protocol

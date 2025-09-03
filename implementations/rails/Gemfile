@@ -18,6 +18,9 @@ gem "devise"
 gem "pundit", "~> 2.3"
 gem "jwt"
 
+# State Machine
+gem "aasm", "~> 5.5"
+
 # Utilities
 gem "bcrypt", "~> 3.1.7"
 gem "image_processing", "~> 1.2"

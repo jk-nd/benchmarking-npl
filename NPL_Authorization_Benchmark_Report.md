@@ -24,7 +24,7 @@ This comprehensive benchmark study compares NPL (Noumena Protocol Language) agai
 | Framework | Total LOC* | Auth LOC | Files | Dependencies | Security Vulnerabilities |
 |-----------|-----------|----------|-------|--------------|-------------------------|
 | **NPL** | 423 | ~50 | 1 | 0 | **0** |
-| **Ruby on Rails** | 1,401 | ~400 | 20 | 12+ | 5 |
+| **Ruby on Rails** | 1,514 | ~400 | 20 | 12+ | 5 |
 | **Node.js + Express** | 3,239 | ~800 | 21 | 20+ | 8 |
 | **Django** | 2,242 | ~330 | 17 | 15+ | 8 |
 
@@ -433,7 +433,7 @@ This ensures that code complexity comparisons reflect framework differences rath
 | **Authentication** | 150 | 3 | Devise configuration and customization |
 | **Configuration** | 300 | 5 | Gemfile, routes, initializers |
 | **Tests** | 0 | 0 | Not implemented |
-| **Total Implementation** | **1,401** | **20** | **System without tests** |
+| **Total Implementation** | **1,514** | **20** | **System without tests** |
 
 #### 2.2.3 Authorization Implementation Complexity
 
@@ -1067,7 +1067,7 @@ class ExpenseDetailSerializer(serializers.ModelSerializer):
 
 **Vulnerabilities per 1000 Lines of Code (Core Implementation Only):**
 - **NPL**: 0.0 vulnerabilities/1000 LOC (0 total / 423 LOC)
-- **Rails**: 3.6 vulnerabilities/1000 LOC (5 total / 1,401 LOC)
+- **Rails**: 3.3 vulnerabilities/1000 LOC (5 total / 1,514 LOC)
 - **Node.js**: 2.5 vulnerabilities/1000 LOC (8 total / 3,239 LOC)
 - **Django**: 3.6 vulnerabilities/1000 LOC (8 total / 2,242 LOC)
 
@@ -1159,7 +1159,7 @@ class ExpenseDetailSerializer(serializers.ModelSerializer):
 | Framework | Core Auth | State Mgmt | API Layer | Auth System | Config | Total* | Multiplier |
 |-----------|-----------|------------|-----------|-------------|---------|-------|------------|
 | **NPL** | ~50 | 0 (auto) | 0 (gen) | 0 (built-in) | <10 | **423** | **1.0x** |
-| **Rails** | ~164 | 406 | 246 | 116 | 116 | **1,401** | **3.3x** |
+| **Rails** | ~164 | 519 | 246 | 116 | 116 | **1,514** | **3.6x** |
 | **Node.js** | ~800 | 413 | 524 | 448 | 160 | **3,239** | **7.7x** |
 | **Django** | ~333 | 510 | 537 | 154 | 201 | **2,242** | **5.3x** |
 

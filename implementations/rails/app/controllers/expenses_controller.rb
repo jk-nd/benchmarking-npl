@@ -43,21 +43,21 @@ class ExpensesController < ApplicationController
   # POST /expenses/:id/submit
   def submit
     authorize @expense, :submit?
-    result = @expense.submit!(current_user)
+    result = @expense.submit_expense!(current_user)
     render json: { message: result }
   end
 
   # POST /expenses/:id/approve  
   def approve
     authorize @expense, :approve?
-    result = @expense.approve!(current_user)
+    result = @expense.approve_expense!(current_user)
     render json: { message: result }
   end
 
   # POST /expenses/:id/process_payment
   def process_payment
     authorize @expense, :process_payment?
-    result = @expense.process_payment!(current_user)
+    result = @expense.process_payment_expense!(current_user)
     render json: { message: result }
   end
 
@@ -72,7 +72,7 @@ class ExpensesController < ApplicationController
   def executive_override
     authorize @expense, :executive_override?
     reason = params[:reason] || 'Executive override applied'
-    result = @expense.executive_override!(current_user, reason)
+    result = @expense.executive_override_expense!(current_user, reason)
     render json: { message: result }
   end
 
@@ -80,7 +80,7 @@ class ExpensesController < ApplicationController
   def reject
     authorize @expense, :reject?
     reason = params[:reason] || 'Expense rejected'
-    result = @expense.reject!(current_user, reason)
+    result = @expense.reject_expense!(current_user, reason)
     render json: { message: result }
   end
 

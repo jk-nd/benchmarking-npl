@@ -1,5 +1,7 @@
 # Expense model implementing the expense approval workflow
 class Expense < ApplicationRecord
+  include AASM
+  
   # State machine states
   STATES = %w[draft submitted approved compliance_hold rejected paid].freeze
   CATEGORIES = %w[MEALS TRAVEL ACCOMMODATION ENTERTAINMENT SUPPLIES CAPITAL OTHER].freeze
@@ -16,6 +18,46 @@ class Expense < ApplicationRecord
   has_many :receipts, dependent: :destroy
   has_many :audit_logs, dependent: :destroy
   has_many :approval_history_entries, dependent: :destroy
+
+  # AASM State Machine Configuration - replaces manual state management
+  aasm column: 'state', initial: :draft do
+    state :draft, initial: true
+    state :submitted
+    state :approved
+    state :compliance_hold
+    state :rejected, final: true
+    state :paid, final: true
+
+    # Employee submission transition - equivalent to NPL permission[employee] submit()
+    event :submit do
+      transitions from: :draft, to: :submitted, guard: :can_submit?, after: :after_submit
+    end
+
+    # Manager approval transition - equivalent to NPL permission[manager] approve()
+    event :approve do
+      transitions from: [:submitted, :compliance_hold], to: :approved, guard: :can_approve?, after: :after_approve
+    end
+
+    # Rejection transition
+    event :reject do
+      transitions from: [:submitted, :compliance_hold], to: :rejected, guard: :can_reject?, after: :after_reject
+    end
+
+    # Finance payment processing - equivalent to NPL permission[finance] processPayment()
+    event :process_payment do
+      transitions from: :approved, to: :paid, guard: :can_process_payment?, after: :after_process_payment
+    end
+
+    # Compliance hold
+    event :flag_for_compliance do
+      transitions from: :submitted, to: :compliance_hold, guard: :can_flag_compliance?
+    end
+
+    # Executive override
+    event :executive_override do
+      transitions from: [:submitted, :compliance_hold, :rejected], to: :approved, guard: :can_executive_override?, after: :after_executive_override
+    end
+  end
 
   # Validations
   validates :state, inclusion: { in: STATES }
@@ -64,52 +106,123 @@ class Expense < ApplicationRecord
     state == 'compliance_hold'
   end
 
-  # Business logic methods
+  # AASM Guard methods - these replace NPL's compile-time checks with runtime checks
+  def can_submit?
+    @current_user && authorize_employee!(@current_user) && validate_submission_rules!
+    true
+  rescue => e
+    false
+  end
 
-  # Employee submission - equivalent to NPL submit permission
-  def submit!(current_user)
-    authorize_employee!(current_user)
-    validate_submission_rules!
-    
+  def can_approve?
+    @current_user && authorize_manager!(@current_user) && validate_manager_approval_rules!(@current_user)
+    true
+  rescue => e
+    false
+  end
+
+  def can_process_payment?
+    @current_user && authorize_finance!(@current_user) && validate_payment_processing_rules!
+    true
+  rescue => e
+    false
+  end
+
+  def can_reject?
+    @current_user && authorize_approver!(@current_user)
+    true
+  rescue => e
+    false
+  end
+
+  def can_flag_compliance?
+    @current_user && authorize_compliance!(@current_user)
+    true
+  rescue => e
+    false
+  end
+
+  def can_executive_override?
+    @current_user && authorize_executive!(@current_user)
+    true
+  rescue => e
+    false
+  end
+
+  # AASM Callback methods - handle state transition side effects
+  def after_submit
     update!(
-      state: 'submitted',
       submitted_at: Time.current,
       manager_id: get_direct_manager_id
     )
-    
-    log_action(current_user, 'submit', 'Expense submitted successfully')
+    log_action(@current_user, 'submit', 'Expense submitted successfully')
+  end
+
+  def after_approve
+    update!(
+      approved_at: Time.current,
+      approved_by: @current_user
+    )
+    log_action(@current_user, 'approve', 'Expense approved by manager')
+  end
+
+  def after_reject
+    update!(
+      rejected_at: Time.current,
+      rejection_reason: @rejection_reason
+    )
+    log_action(@current_user, 'reject', "Expense rejected: #{@rejection_reason}")
+  end
+
+  def after_process_payment
+    update!(
+      processed_at: Time.current,
+      processed_by: @current_user,
+      payment_details: generate_payment_details
+    )
+    log_action(@current_user, 'processPayment', 'Payment processed successfully')
+  end
+
+  def after_executive_override
+    update!(
+      approved_at: Time.current,
+      approved_by: @current_user,
+      override_reason: @override_reason
+    )
+    log_action(@current_user, 'executiveOverride', "Executive override: #{@override_reason}")
+  end
+
+  # Public methods using AASM state machine - equivalent to NPL permissions
+  def submit_expense!(current_user)
+    @current_user = current_user
+    submit!
     'Expense submitted successfully'
   end
 
-  # Manager approval - equivalent to NPL approve permission  
-  def approve!(current_user)
-    authorize_manager!(current_user)
-    validate_manager_approval_rules!(current_user)
-    
-    update!(
-      state: 'approved',
-      approved_at: Time.current,
-      approved_by: current_user
-    )
-    
-    log_action(current_user, 'approve', 'Expense approved by manager')
+  def approve_expense!(current_user)
+    @current_user = current_user
+    approve!
     'Expense approved by manager'
   end
 
-  # Finance payment processing - equivalent to NPL processPayment permission
-  def process_payment!(current_user)
-    authorize_finance!(current_user)
-    validate_payment_processing_rules!
-    
-    update!(
-      state: 'paid',
-      processed_at: Time.current,
-      processed_by: current_user,
-      payment_details: generate_payment_details
-    )
-    
-    log_action(current_user, 'processPayment', 'Payment processed successfully')
+  def process_payment_expense!(current_user)
+    @current_user = current_user
+    process_payment!
     'Payment processed successfully'
+  end
+
+  def reject_expense!(current_user, reason)
+    @current_user = current_user
+    @rejection_reason = reason
+    reject!
+    'Expense rejected'
+  end
+
+  def executive_override_expense!(current_user, reason)
+    @current_user = current_user
+    @override_reason = reason
+    executive_override!
+    'Executive override applied'
   end
 
   # Compliance audit - equivalent to NPL auditReview permission
