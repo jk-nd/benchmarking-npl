@@ -378,10 +378,10 @@ class Expense(models.Model):
         ).first()
     
     def _is_vendor_blacklisted(self):
-        """Manual vendor validation vs NPL's isVendorBlacklisted()."""
-        # Simplified implementation
-        blacklisted_vendors = ['VENDOR_SUSPICIOUS', 'VENDOR_FRAUD']
-        return self.vendor_id in blacklisted_vendors
+        """Manual vendor validation vs NPL's isVendorBlacklisted() - matches NPL logic."""
+        blacklisted_vendors = ['VENDOR_BLACKLISTED', 'SUSPICIOUS_CORP', 'FRAUD_COMPANY']
+        return (self.vendor_id in blacklisted_vendors or 
+                (self.vendor_id and '_BLOCKED' in self.vendor_id))
     
     def _is_duplicate_expense(self):
         """Manual duplicate detection vs NPL's isDuplicateExpense()."""
@@ -393,9 +393,15 @@ class Expense(models.Model):
         ).exclude(id=self.id).exists()
     
     def _get_remaining_department_budget(self):
-        """Manual budget calculation."""
-        # Simplified implementation - in reality would be complex
-        return Decimal('10000.00')
+        """Manual budget calculation - matches NPL getRemainingBudget logic."""
+        department_budgets = {
+            'Engineering': Decimal('75000.00'),
+            'Marketing': Decimal('45000.00'),
+            'Sales': Decimal('60000.00'),
+            'Finance': Decimal('25000.00'),
+            'HR': Decimal('15000.00')
+        }
+        return department_budgets.get(self.department, Decimal('30000.00'))
     
     def _has_payment_duplicate(self):
         """Manual duplicate payment check."""

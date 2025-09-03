@@ -299,8 +299,9 @@ module.exports = (sequelize, DataTypes) => {
 
   // Business rule validation methods
   Expense.prototype.isVendorBlacklisted = function() {
-    const blacklistedVendors = ['VENDOR_999', 'SUSPICIOUS_CO'];
-    return blacklistedVendors.includes(this.vendorId);
+    const blacklistedVendors = ['VENDOR_BLACKLISTED', 'SUSPICIOUS_CORP', 'FRAUD_COMPANY'];
+    return blacklistedVendors.includes(this.vendorId) || 
+           (this.vendorId && this.vendorId.includes('_BLOCKED'));
   };
 
   Expense.prototype.exceedsMonthlyLimit = async function() {
@@ -329,17 +330,27 @@ module.exports = (sequelize, DataTypes) => {
   Expense.prototype.isBusinessDay = function() {
     const today = new Date();
     const dayOfWeek = today.getDay();
-    return dayOfWeek >= 1 && dayOfWeek <= 5; // Monday to Friday
+    // Monday to Friday excluding major holidays
+    if (dayOfWeek < 1 || dayOfWeek > 5) return false;
+    
+    // Exclude major holidays (simplified)
+    if (today.getDate() === 25 && today.getMonth() === 11) return false; // Christmas (Dec 25)
+    if (today.getDate() === 1 && today.getMonth() === 0) return false;   // New Year (Jan 1)
+    if (today.getDate() === 4 && today.getMonth() === 6) return false;   // July 4th
+    
+    return true;
   };
 
   Expense.prototype.getRemainingDepartmentBudget = function() {
     // Simulate budget checking - in real system would query budget service
     const budgets = {
-      'Engineering': 50000,
-      'Marketing': 30000,
-      'Finance': 25000
+      'Engineering': 75000,
+      'Marketing': 45000,
+      'Sales': 60000,
+      'Finance': 25000,
+      'HR': 15000
     };
-    return budgets[this.department] || 10000;
+    return budgets[this.department] || 30000;
   };
 
   Expense.prototype.requiresVPApproval = function() {

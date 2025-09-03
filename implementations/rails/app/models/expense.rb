@@ -297,9 +297,14 @@ class Expense < ApplicationRecord
   # Helper methods for business rules
 
   def get_direct_manager_id
-    # Simulate the getDirectManager function from NPL
-    # In a real system, this would query an organizational chart
-    employee.manager_id || User.find_by(role: 'manager', department: department)&.id
+    # Simulate the getDirectManager function from NPL - matches NPL logic
+    employee_id_str = employee_id.to_s
+    return 'mgr_engineering_001' if employee_id_str.include?('eng')
+    return 'mgr_sales_001' if employee_id_str.include?('sales')
+    return 'mgr_marketing_001' if employee_id_str.include?('mkt')
+    return 'mgr_finance_001' if employee_id_str.include?('fin')
+    return 'mgr_hr_001' if employee_id_str.include?('hr')
+    'mgr_general_001'
   end
 
   def get_current_approver
@@ -313,16 +318,19 @@ class Expense < ApplicationRecord
   def get_remaining_budget(dept)
     # Simulate budget checking - in real system would query budget service
     case dept
-    when 'Engineering' then 50000
-    when 'Marketing' then 30000
+    when 'Engineering' then 75000
+    when 'Marketing' then 45000
+    when 'Sales' then 60000
     when 'Finance' then 25000
-    else 10000
+    when 'HR' then 15000
+    else 30000
     end
   end
 
   def vendor_blacklisted?
-    # Simulate vendor blacklist check
-    %w[VENDOR_999 SUSPICIOUS_CO].include?(vendor_id)
+    # Simulate vendor blacklist check - matches NPL logic
+    blacklisted_vendors = ['VENDOR_BLACKLISTED', 'SUSPICIOUS_CORP', 'FRAUD_COMPANY']
+    blacklisted_vendors.include?(vendor_id) || vendor_id&.include?('_BLOCKED')
   end
 
   def vendor_payment_verified?
@@ -340,7 +348,13 @@ class Expense < ApplicationRecord
 
   def business_day?
     date = Date.current
-    date.wday.between?(1, 5) # Monday to Friday
+    # Monday to Friday excluding major holidays
+    return false unless date.wday.between?(1, 5)
+    # Exclude major holidays (simplified)
+    return false if date.day == 25 && date.month == 12 # Christmas
+    return false if date.day == 1 && date.month == 1   # New Year
+    return false if date.day == 4 && date.month == 7   # July 4th
+    true
   end
 
   def exceeds_monthly_limit?

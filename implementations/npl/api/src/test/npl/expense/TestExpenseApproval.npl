@@ -7,7 +7,7 @@ package expense;
 function getEmployee() returns Party ->
     partyOf(
         mapOf(
-            Pair("employee_id", setOf("emp_123")),
+            Pair("employee_id", setOf("emp_eng_123")),
             Pair("department", setOf("Engineering")),
             Pair("monthly_limit", setOf("2000")),
             Pair("preferred_username", setOf("alice"))
@@ -22,7 +22,7 @@ function getEmployee() returns Party ->
 function getManager() returns Party ->
     partyOf(
         mapOf(
-            Pair("manager_id", setOf("mgr_456")),
+            Pair("manager_id", setOf("mgr_engineering_001")),
             Pair("department", setOf("Engineering")),
             Pair("approval_limit", setOf("15000")),
             Pair("seniority_level", setOf("3")),
@@ -112,7 +112,7 @@ function testBasicExpenseSubmission(test: Test) -> {
     var cfo = getCFO();
     
     var expense = ExpenseApproval[employee, manager, finance, compliance, vp, cfo](
-        employeeId = "emp_123",
+        employeeId = "emp_eng_123",
         managerId = "mgr_456", 
         financeId = "fin_789",
         complianceId = "comp_101",
@@ -147,8 +147,8 @@ function testManagerApproval(test: Test) -> {
     var cfo = getCFO();
     
     var expense = ExpenseApproval[employee, manager, finance, compliance, vp, cfo](
-        employeeId = "emp_123",
-        managerId = "manager_emp_123",  // Must match getDirectManager logic
+        employeeId = "emp_eng_123",
+        managerId = "mgr_engineering_001",  // Must match getDirectManager logic
         financeId = "fin_789",
         complianceId = "comp_101",
         amount = 500.0,
@@ -185,8 +185,8 @@ function testCompleteWorkflow(test: Test) -> {
     var cfo = getCFO();
     
     var expense = ExpenseApproval[employee, manager, finance, compliance, vp, cfo](
-        employeeId = "emp_123",
-        managerId = "manager_emp_123",
+        employeeId = "emp_eng_123",
+        managerId = "mgr_engineering_001",
         financeId = "fin_789", 
         complianceId = "comp_101",
         amount = 1000.0,
@@ -229,8 +229,8 @@ function testAuditTrailGeneration(test: Test) -> {
     var cfo = getCFO();
     
     var expense = ExpenseApproval[employee, manager, finance, compliance, vp, cfo](
-        employeeId = "emp_123",
-        managerId = "manager_emp_123",
+        employeeId = "emp_eng_123",
+        managerId = "mgr_engineering_001",
         financeId = "fin_789",
         complianceId = "comp_101",
         amount = 150.0,

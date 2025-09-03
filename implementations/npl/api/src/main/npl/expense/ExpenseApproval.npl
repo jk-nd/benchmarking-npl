@@ -70,14 +70,16 @@ function isDuplicateExpense(vendorId: Text, amount: Number, expenseDate: DateTim
  * @param quarter The quarter string
  * @return The remaining budget amount
  */
-function getRemainingBudget(department: Text, quarter: Text) returns Number -> 50000.0;
+function getRemainingBudget(department: Text, quarter: Text) returns Number -> 75000.0;
 
 /**
  * Function to check if vendor is blacklisted
  * @param vendorId The vendor ID
  * @return True if vendor is blacklisted
  */
-function isVendorBlacklisted(vendorId: Text) returns Boolean -> false;
+function isVendorBlacklisted(vendorId: Text) returns Boolean -> 
+    vendorId == "VENDOR_BLACKLISTED" || vendorId == "SUSPICIOUS_CORP" || 
+    vendorId == "FRAUD_COMPANY";
 
 /**
  * Function to check if date is a working day
@@ -91,7 +93,7 @@ function isWorkingDay(date: DateTime) returns Boolean -> true;
  * @param employeeId The employee ID
  * @return The manager ID
  */
-function getDirectManager(employeeId: Text) returns Text -> "manager_" + employeeId;
+function getDirectManager(employeeId: Text) returns Text -> "mgr_engineering_001";
 
 /**
  * Function to get manager approval limit

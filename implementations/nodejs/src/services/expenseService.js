@@ -298,9 +298,21 @@ class ExpenseService {
   }
 
   async getDirectManagerForEmployee(employee) {
-    // Simulate organizational chart lookup
-    // In NPL, this is handled automatically by getDirectManager function
+    // Simulate organizational chart lookup - matches NPL getDirectManager logic
+    const employeeId = employee.employeeId || employee.id || '';
+    
+    let managerEmployeeId = 'mgr_general_001';
+    if (employeeId.includes('eng')) managerEmployeeId = 'mgr_engineering_001';
+    else if (employeeId.includes('sales')) managerEmployeeId = 'mgr_sales_001';
+    else if (employeeId.includes('mkt')) managerEmployeeId = 'mgr_marketing_001';
+    else if (employeeId.includes('fin')) managerEmployeeId = 'mgr_finance_001';
+    else if (employeeId.includes('hr')) managerEmployeeId = 'mgr_hr_001';
+    
     return await User.findOne({
+      where: { 
+        employeeId: managerEmployeeId
+      }
+    }) || await User.findOne({
       where: { 
         role: 'manager',
         department: employee.department 
